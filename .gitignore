@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+
+# Local environments and editor state
+.venv/
+venv/
+env/
+.vscode/
+.idea/
+
+# Runtime logs and temporary files
+*.log
+*.tmp

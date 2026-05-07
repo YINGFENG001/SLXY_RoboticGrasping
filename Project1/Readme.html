@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&#x6df1;&#x84dd;&#x5b66;&#x9662; Project 1</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="深蓝学院-project-1">深蓝学院 Project 1</h1>
+<h1 id="act-with-agilex-piper-">ACT with AGILE·X PiPER 🦾</h1>
+<p>注：本次课程更新采用全新的机械臂AGILE·X PiPER，带来更真实的操作体验。</p>
+<blockquote>
+<p>⚙️ <strong>系统建议：使用 Ubuntu 20.04 环境进行开发与实验</strong>，以确保软件兼容性与依赖稳定性。</p>
+</blockquote>
+<h2 id="完成此project后你将">完成此Project后，你将：</h2>
+<ul>
+<li>掌握如何创建并管理适用于 ACT 的 Conda 虚拟环境。</li>
+<li>学会借助 MuJoCo 物理引擎，在虚拟环境中模拟机械臂任务并生成用于训练的高质量数据集。</li>
+<li>理解ACT的基本原理，掌握其训练流程，完成从数据到训练策略模型的全过程。</li>
+<li>分析ACT模型中关键超参数对训练稳定性与最终效果的影响，并优化模型性能。</li>
+</ul>
+<h2 id="你的任务">你的任务：</h2>
+<p>使用ACT在mujoco仿真环境中训练松灵的机械臂PiPER，让它能够抓起红色方块并且成功放在蓝色圆盘上。</p>
+<p><img src="file:////home/shenlanxueyuan/lmx/arm/lensson1_release/image/489A45D1FD9A7D153B6D7A0A20015ABF.png" alt="task.png"></p>
+<p>Reward分布：</p>
+<ul>
+<li>夹爪碰到方块：reward=1</li>
+<li>成功夹起方块：reward=2</li>
+<li>成功将方块放置在蓝色盘子上：reward=3</li>
+</ul>
+<p>看看你能不能让机械臂总是拿到3分的满分呢？</p>
+<h2 id="任务步骤">任务步骤：</h2>
+<h4 id="step1-配置act所需的conda环境">Step1. 配置ACT所需的conda环境：</h4>
+<pre><code>1. 下载anaconda：[https://www.anaconda.com/download/success](https://www.anaconda.com/download/success)
+2. 在Terminal中执行以下命令，创建名为project1_act的环境并且安装所需的依赖。
+
+```bash
+conda create -n project1_act python=3.8.10
+conda activate project1_act
+pip install torchvision
+pip install torch
+pip install pyquaternion
+pip install pyyaml
+pip install rospkg
+pip install pexpect
+pip install mujoco==2.3.7
+pip install dm_control==1.0.14
+pip install opencv-python
+pip install matplotlib
+pip install einops
+pip install packaging
+pip install h5py
+pip install ipython
+cd act_agilex_piper/detr &amp;&amp; pip install -e .
+```
+</code></pre>
+<h4 id="step2-使用脚本生成训练数据">Step2. 使用脚本生成训练数据：</h4>
+<pre><code>打开Terminal，在act_galaxea_piper目录下运行以下命令
+
+```bash
+python3 record_sim_episodes_piper.py --task_name sim_pick_n_place_cube_scripted --dataset_dir data/sim_pick_n_place_cube_scripted --num_episodes 50
+
+# 如果你想观看实时渲染，那就多加一个如下flag：
+--onscreen_render
+```
+</code></pre>
+<h4 id="step3-查看生成好的训练数据">Step3. 查看生成好的训练数据：</h4>
+<pre><code>```bash
+python3 visualize_episodes.py --dataset_dir data/sim_pick_n_place_cube_scripted --episode_idx 0 # 此处选取你想要视频查看的episode的序列号
+```
+</code></pre>
+<h4 id="step4-训练">Step4. 训练：</h4>
+<pre><code>```bash
+python3 imitate_episodes.py \
+--task_name sim_pick_n_place_cube_scripted \
+--ckpt_dir ckpt_dir --policy_class ACT \
+--kl_weight 10 --chunk_size 100 \
+--hidden_dim 512 --batch_size 8 \
+--dim_feedforward 3200 --num_epochs 2000 \
+--lr 1e-5 --seed 0 --temporal_agg
+```
+</code></pre>
+<h4 id="step5-评估训练结果">Step5. 评估训练结果：</h4>
+<pre><code>```bash
+python3 imitate_episodes.py \
+--task_name sim_pick_n_place_cube_scripted \
+--ckpt_dir ckpt_dir --policy_class ACT \
+--kl_weight 10 --chunk_size 100 \
+--hidden_dim 512 --batch_size 8 \
+--dim_feedforward 3200 --num_epochs 2000 \
+--lr 1e-5 --seed 0 --temporal_agg --eval
+```
+</code></pre>
+<p><strong>Step6.</strong> 此时如果你完成按照所给的超级参数来训练，你会发现拿到3分满分的概率低于60%，这时候你需要通过调参来提⾼成功概率。将你所得到的成功率分享在评论区/课程官方答疑交流群里吧。</p>
+<p><strong>Step7.</strong>（可选）：使⽤docker训练和运⾏试验 <a href="https://github.com/Weijing/robot_project/tree/main/docker_act">https://github.com/Weijing/robot_project/tree/main/docker_act</a></p>
+<p><strong>Step8.</strong>（可选）：观察你生成的训练数据视频，你有没有想到什么不同寻常的方法来提高成功率呢？</p>
+
+            
+            
+        </body>
+        </html>

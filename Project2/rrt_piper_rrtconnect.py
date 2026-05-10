@@ -1,4 +1,3 @@
-# 导入必要的库
 from dm_control import mujoco
 import cv2
 import numpy as np
@@ -19,41 +18,65 @@ my_chain = ikpy.chain.Chain.from_urdf_file("assets/piper_right.urdf")
 DENSE_PATH_MAX_STEP = 0.03
 SMOOTHING_ITERATIONS = 120
     
-class RRT:
+class RRTConnect:
     class Node:
         def __init__(self, q):
-            self.q = q
+            self.q = np.array(q[:6])
             self.path_q = []
             self.parent = None
 
-    def __init__(self, start, goal, joint_limits, expand_dis=0.1, path_resolution=0.01, goal_sample_rate=5, max_iter=5000):
+    def __init__(self, start, goal, joint_limits, expand_dis=0.1, path_resolution=0.01, max_iter=5000):
         self.start = self.Node(start)
         self.end = self.Node(goal)
         self.joint_limits = joint_limits
         self.expand_dis = expand_dis
         self.path_resolution = path_resolution
-        self.goal_sample_rate = goal_sample_rate
         self.max_iter = max_iter
-        self.node_list = []
 
     def planning(self, model):
-        self.node_list = [self.start]
-        for i in range(self.max_iter):
+        tree_start = [self.start]
+        tree_goal = [self.end]
+        active_tree_from_start = True
+
+        for _ in range(self.max_iter):
             rnd_node = self.get_random_node()
-            nearest_ind = self.get_nearest_node_index(self.node_list, rnd_node)
-            nearest_node = self.node_list[nearest_ind]
+            new_node = self.extend(tree_start, rnd_node, model)
 
-            new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
+            if new_node is not None:
+                connect_node = self.connect(tree_goal, new_node, model)
+                if connect_node is not None:
+                    return self.generate_connected_path(
+                        new_node,
+                        connect_node,
+                        active_tree_from_start,
+                    )
 
-            if self.check_collision(new_node, model):
-                self.node_list.append(new_node)
-            
-            if self.calc_dist_to_goal(self.node_list[-1].q) <= self.expand_dis:
-                final_node = self.steer(self.node_list[-1], self.end, self.expand_dis)
-                if self.check_collision(final_node, model):
-                    return self.generate_final_course(len(self.node_list) - 1)
+            tree_start, tree_goal = tree_goal, tree_start
+            active_tree_from_start = not active_tree_from_start
 
         return None
+
+    def extend(self, tree, target_node, model):
+        nearest_ind = self.get_nearest_node_index(tree, target_node)
+        nearest_node = tree[nearest_ind]
+        if self.calc_distance(nearest_node.q, target_node.q) < 1e-9:
+            return None
+
+        new_node = self.steer(nearest_node, target_node, self.expand_dis)
+        if not self.check_collision(new_node, model):
+            return None
+
+        tree.append(new_node)
+        return new_node
+
+    def connect(self, tree, target_node, model):
+        while True:
+            new_node = self.extend(tree, target_node, model)
+            if new_node is None:
+                return None
+
+            if self.calc_distance(new_node.q, target_node.q) <= self.path_resolution:
+                return new_node
 
     def get_nearest_node_index(self, node_list, rnd_node):
         """
@@ -78,11 +101,11 @@ class RRT:
             return new_node
         if extend_length > distance:
             extend_length = distance
-        num_steps = int(extend_length / self.path_resolution)
+        num_steps = max(int(np.ceil(extend_length / self.path_resolution)), 1)
         delta_q = (np.array(to_node.q[:6]) - np.array(from_node.q)) / distance
 
-        for i in range(num_steps):
-            new_q = new_node.q + delta_q * self.path_resolution
+        for i in range(1, num_steps + 1):
+            new_q = np.array(from_node.q) + delta_q * extend_length * (i / num_steps)
             new_node.q = np.clip(new_q, [lim[0] for lim in self.joint_limits], [lim[1] for lim in self.joint_limits])
             new_node.path_q.append(new_node.q.copy())
 
@@ -90,10 +113,7 @@ class RRT:
         return new_node
 
     def get_random_node(self):
-        if random.randint(0, 100) > self.goal_sample_rate:
-            rand_q = [random.uniform(joint_min, joint_max) for joint_min, joint_max in self.joint_limits]
-        else:
-            rand_q = self.end.q
+        rand_q = [random.uniform(joint_min, joint_max) for joint_min, joint_max in self.joint_limits]
         return self.Node(rand_q)
 
     def check_collision(self, node, model):
@@ -102,17 +122,23 @@ class RRT:
                 return False
         return check_collision_with_dm_control(model, node.q)
 
-    def generate_final_course(self, goal_ind):
-        path = [self.end.q]
-        node = self.node_list[goal_ind]
-        while node.parent is not None:
+    def trace_path(self, node):
+        path = []
+        while node is not None:
             path.append(node.q)
             node = node.parent
-        path.append(self.start.q)
-        return path[::-1]
-    
-    def calc_dist_to_goal(self, q):
-        return np.linalg.norm(np.array(self.end.q[:6]) - np.array(q))
+        return path
+
+    def generate_connected_path(self, active_node, connected_node, active_tree_from_start):
+        active_path = self.trace_path(active_node)
+        connected_path = self.trace_path(connected_node)
+
+        if active_tree_from_start:
+            return active_path[::-1] + connected_path[1:]
+        return connected_path[::-1] + active_path[1:]
+
+    def calc_distance(self, q_from, q_to):
+        return np.linalg.norm(np.array(q_to[:6]) - np.array(q_from[:6]))
 
 def get_depth(sim):
     # 获取深度图（单位为米），返回的是一个浮点数组
@@ -438,7 +464,7 @@ print("初始欧拉角(度):", np.round(euler_angles, 2))
 
 #TODO 8.在这里你需要初始化 RRT 路径规划器(使用定义好的类)，传入起点、终点与关节限制，并生成一条抓取路径。
 # 请确保已正确设置 RRT 类与碰撞检测逻辑，最终返回一条可行路径 rrt_path。
-rrt = RRT(start, goal, joint_limits, expand_dis=0.15, path_resolution=0.02, goal_sample_rate=20, max_iter=8000)
+rrt = RRTConnect(start, goal, joint_limits, expand_dis=0.15, path_resolution=0.02, max_iter=4000)
 rrt_path = rrt.planning(model)
 
 # 将生成的路径应用于 MuJoCo 仿真，并录制视频
@@ -452,6 +478,6 @@ if rrt_path:
     open_gripper()
 
     # 执行路径并生成视频文件 
-    apply_rrt_path_to_dm_control(model, rrt_path, video_name="rrt_robot_motion_2.mp4")
+    apply_rrt_path_to_dm_control(model, rrt_path, video_name="rrt_robot_motion_rrtconnect.mp4")
 else:
     print("No path found!")

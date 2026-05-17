@@ -364,10 +364,10 @@ def pose_gt_init(physics, body_name="cracker_box", joint_name = 'cracker_box_joi
 
     model.named.data.qpos[joint_name][0:3] = T[0:3]
 
-    # TODO 1 获取的位姿是旋转矩阵，我们这里只保留Z轴旋转角度来验证算法，在这里，你需要从旋转矩阵 `rot` 中提取欧拉角
-    rot = 
-    # TODO 2 提取欧拉角（XYZ 顺序），确保正确提取旋转的角度，并理解 XYZ 顺序在三维空间中的意义。
-    euler_angles = 
+    # TODO 1: 将 GT 旋转矩阵转成 Rotation 对象，后面只保留桌面平面内的 Z 轴旋转。
+    rot = Rotation.from_matrix(R)
+    # TODO 2: 按 XYZ 顺序提取欧拉角，取其中的 rz 作为平面旋转角。
+    euler_angles = rot.as_euler('xyz')
 
     # 仅保留 Z 轴旋转
     rx = 0.0
@@ -375,9 +375,8 @@ def pose_gt_init(physics, body_name="cracker_box", joint_name = 'cracker_box_joi
     rz = euler_angles[2]
     print("预测Z轴旋转角度", rz * 57.2958) 
 
-    # TODO 3 最终的逆解需要四元数，因此重新构造仅Z轴旋转的四元数，在这里，你需要将提取出的仅绕 Z 轴旋转的欧拉角转换为四元数
-    #提示：使用 `Rotation.from_euler()` 方法，可以将欧拉角转换为四元数。四元数用于表示旋转，避免了欧拉角的万向节锁问题
-    rot_z_only = 
+    # TODO 3: 重新构造仅含 Z 轴旋转的四元数，并写入 MuJoCo free joint。
+    rot_z_only = Rotation.from_euler('xyz', [rx, ry, rz])
     
 
     quat = rot_z_only.as_quat()
@@ -407,11 +406,10 @@ def pose_predict_init(physics, body_name="cracker_box", joint_name = 'cracker_bo
     T[2] = 0.4
 
     print("预测目标位置:", T)
-    #与前三个任务结构相同，符号不同代表旋转方向的不同
-    # TODO 4 从旋转矩阵中提取欧拉角
-    rot = 
-    # TODO 5 提取欧拉角（XYZ 顺序）
-    euler_angles = 
+    # TODO 4: 将预测旋转矩阵转成 Rotation 对象，便于提取欧拉角。
+    rot = Rotation.from_matrix(R)
+    # TODO 5: 按 XYZ 顺序提取欧拉角，后面只使用 Z 轴旋转。
+    euler_angles = rot.as_euler('xyz')
 
     # 仅保留 Z 轴旋转
     rx = 0.0
@@ -419,8 +417,8 @@ def pose_predict_init(physics, body_name="cracker_box", joint_name = 'cracker_bo
     rz = -euler_angles[2]   # 保留负符号的 Z 轴旋转角度
     print("预测Z轴旋转角度", -rz * 57.2958)   # 输出负的 Z 轴旋转角度
  
-    # TODO 6 构造仅绕 Z 轴旋转的四元数：
-    rot_z_only = 
+    # TODO 6: 只保留 Z 轴旋转；负号用于匹配当前仿真坐标方向。
+    rot_z_only = Rotation.from_euler('xyz', [rx, ry, rz])
 
     R = rot_z_only.as_matrix()
     print("R",R)
@@ -529,8 +527,31 @@ def evaluate_and_save_samples(model = posecnn_model,
     return sample_idx,pose_predict,gt_pose_dict
 
 
-# TODO 7 调用解算函数获取预测位姿和真实位姿，在此处填写调用 evaluate_and_save_samples 函数的代码，确保正确传入所有参数
-sample_idx,pose_predict,gt_pose = 
+# TODO 7: 调用 PoseCNN 推理，获取预测位姿和对应 GT 位姿。
+sample_idx, pose_predict, gt_pose = evaluate_and_save_samples(
+    model=posecnn_model,
+    dataloader=dataloader,
+    dataset=val_dataset,
+    device=DEVICE,
+    output_dir=output_dir,
+    num_samples=1,
+)
+
+retry_count = 0
+# 随机样本可能没有检测到 cracker box，最多重试 20 次保证后续抓取目标存在。
+while (0 not in pose_predict or 2 not in pose_predict[0]) and retry_count < 20:
+    sample_idx, pose_predict, gt_pose = evaluate_and_save_samples(
+        model=posecnn_model,
+        dataloader=dataloader,
+        dataset=val_dataset,
+        device=DEVICE,
+        output_dir=output_dir,
+        num_samples=1,
+    )
+    retry_count += 1
+
+if 0 not in pose_predict or 2 not in pose_predict[0]:
+    raise RuntimeError("PoseCNN did not predict cracker box (class 2) after 20 retries.")
 
 ##### 以上是利用训练出来的PoseCNN模型，对随机抽取一张测试集图像进行识别推理#####
 

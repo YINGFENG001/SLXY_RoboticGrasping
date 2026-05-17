@@ -84,21 +84,21 @@ class SegmentationBranch(nn.Module):
 
 
         #TODO 1: 在这里你需要传入输入通道数、输出通道数和卷积核大小，完成卷积层和ReLU层的初始化
-        self.conv1 = nn.Conv2d(512, hidden_layer_dim, kernel_size=1)
+        self.conv1 = nn.Conv2d(    )
 
         nn.init.kaiming_normal_(self.conv1.weight)
         nn.init.zeros_(self.conv1.bias)
         self.relu1 = nn.ReLU()
 
 
-        self.conv2 = nn.Conv2d(512, hidden_layer_dim, kernel_size=1)
+        self.conv2 = nn.Conv2d(    )
 
         nn.init.kaiming_normal_(self.conv2.weight)
         nn.init.zeros_(self.conv2.bias)
         self.relu2 = nn.ReLU()
 
-        # TODO 2: 输出 10 个物体类别 + 1 个背景类别，对应报告中的 11 通道分割概率图。
-        self.conv3 = nn.Conv2d(hidden_layer_dim, num_classes + 1, kernel_size=1)
+        # TODO 2: 在这里你需要完成最后一个卷积层的初始化，self.conv3 是最终的卷积层，负责将经过前两层的特征图映射到最终类别数 + 背景类别的数量
+        self.conv3 = nn.Conv2d(    )
 
         nn.init.kaiming_normal_(self.conv3.weight)
         nn.init.zeros_(self.conv3.bias)
@@ -106,7 +106,7 @@ class SegmentationBranch(nn.Module):
 
 
         # TODO 3: 在这里你需要定义 softmax 层，确保每个像素点的类别概率和为 1
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax =
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -137,17 +137,13 @@ class SegmentationBranch(nn.Module):
         # TODO: Implement forward pass of instance segmentation branch.      #
         ######################################################################
         
-        # TODO 4: 两层 VGG 特征分别用 1x1 Conv + ReLU 降维，再按空间尺寸对齐融合。
-        x1 = self.relu1(self.conv1(feature1))
-        x2 = self.relu2(self.conv2(feature2))
-        temp = nn.functional.interpolate(
-            x2, size=x1.shape[-2:], mode='bilinear', align_corners=False
-        ) + x1
+        #TODO 4 在这里，你需要填充代码来执行卷积操作并进行 ReLU 激活
+        x1 =  
+        x2 =  
+        temp = nn.functional.interpolate(x2, scale_factor=2) + x1
 
-        # TODO 5: 融合特征上采样回原图尺寸，便于逐像素分类。
-        up_sample = nn.functional.interpolate(
-            temp, size=(480, 640), mode='bilinear', align_corners=False
-        )  # up_sample = (N, 64, 480, 640)
+        #TODO 5 这里你需要对中间结果 `temp` 进行进一步的上采样，确保最终的特征图尺寸为 (480, 640)
+        up_sample = nn.functional.interpolate(   )  # up_sample = (N, 64, 480, 640)
 
         x3 = self.conv3(up_sample)  # x3 = (N, 11, 480, 640)
 
@@ -167,17 +163,23 @@ class SegmentationBranch(nn.Module):
         bs, H, W = label.shape  # 获取标签尺寸
         device = label.device  # 获取标签所在设备
 
-        # 标签 0 是背景，只为 1..num_classes 的真实物体类别生成 ROI 框。
-        for batch_id in range(bs):
-            for cls_id in range(1, self.num_classes + 1):
-                y, x = torch.where(label[batch_id] == cls_id)
-                if y.numel() >= _LABEL2MASK_THRESHOL:
-                    bbx.append([batch_id, torch.min(x).item(), torch.min(y).item(),
-                                torch.max(x).item(), torch.max(y).item(), cls_id])
+        # 扩展标签并与类别目标进行比较
+        label_repeat = label.view(bs, 1, H, W).repeat(1, self.num_classes, 1, 1).to(device)
+        label_target = torch.linspace(0, self.num_classes - 1, steps=self.num_classes).view(1, -1, 1, 1).repeat(bs, 1, H, W).to(device)
+        mask = (label_repeat == label_target)
 
-        if len(bbx) == 0:
-            return torch.empty((0, 6), device=device, dtype=torch.float32)
-        return torch.tensor(bbx, device=device, dtype=torch.float32)
+        # 遍历批次和类别，提取非背景类别的边界框
+        for batch_id in range(mask.shape[0]):
+            for cls_id in range(mask.shape[1]):
+                if cls_id != 0:  # 排除背景
+                    y, x = torch.where(mask[batch_id, cls_id] != 0)
+                    if y.numel() >= _LABEL2MASK_THRESHOL:  # 判断类别是否足够
+                        bbx.append([batch_id, torch.min(x).item(), torch.min(y).item(), 
+                                    torch.max(x).item(), torch.max(y).item(), cls_id])
+
+        # 将边界框转换为张量并返回
+        bbx = torch.tensor(bbx).to(device)
+        return bbx
 
         
 class TranslationBranch(nn.Module):
@@ -197,23 +199,22 @@ class TranslationBranch(nn.Module):
         
         #TODO 6 完成卷积层 conv1 conv2 的初始化
         # 1) `conv1` 和 `conv2` 需要处理输入特征，并将其转换为 `hidden_layer_dim` 个输出通道。
-        # 2) `conv3` 用于生成最终的 3D 平移预测，它的输出通道数是 `3 * num_classes`。
+        # 2) `conv3` 用于生成最终的 3D 平移预测，它的输出通道数是 `3 + num_classes`。
         # 3) 请使用 Kaiming 正态分布对卷积核进行初始化，并将偏置初始化为零。
 
-        self.conv1 = nn.Conv2d(512, hidden_layer_dim, kernel_size=1)
+        self.conv1 = 
         nn.init.kaiming_normal_(self.conv1.weight)
         nn.init.zeros_(self.conv1.bias)
-        self.relu1 = nn.ReLU()
+        self.relu1 = 
 
 
-        self.conv2 = nn.Conv2d(512, hidden_layer_dim, kernel_size=1)
+        self.conv2 = 
         nn.init.kaiming_normal_(self.conv2.weight)
         nn.init.zeros_(self.conv2.bias)
-        self.relu2 = nn.ReLU()
+        self.relu2 = 
 
 
-        # 每个类别输出 nx、ny、depth 三个通道，因此是 3 * num_classes。
-        self.conv3 = nn.Conv2d(hidden_layer_dim, 3 * num_classes, kernel_size=1)
+        self.conv3 = 
         nn.init.kaiming_normal_(self.conv3.weight)
         nn.init.zeros_(self.conv3.bias)
 
@@ -237,19 +238,15 @@ class TranslationBranch(nn.Module):
 
 
         # TODO 7: 完成卷积层和 ReLU 操作，填充卷积 + ReLU 操作
-        x1 = self.relu1(self.conv1(feature1))
-        x2 = self.relu2(self.conv2(feature2))
+        x1 =  
+        x2 = 
 
-        # TODO 8: 对齐两层特征尺寸后融合，最终上采样成与 GT centermap 一致的 480x640。
-        temp = nn.functional.interpolate(
-            x2, size=x1.shape[-2:], mode='bilinear', align_corners=False
-        ) + x1
+        # TODO 8: 对 feature2 进行上采样，并与 feature1 进行逐元素加法
+        temp = 
 
-        x3 = self.conv3(temp)  # x3 = (N, 3*num_classes, H, W)
+        x3 = self.conv3(temp)  # x3 = (N, 11, H, W)
 
-        translation = nn.functional.interpolate(
-            x3, size=(480, 640), mode='bilinear', align_corners=False
-        )
+        translation = nn.functional.interpolate(x3, size=(480, 640), mode='bilinear')  # temp = (N, 64, 480, 640)
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -275,18 +272,18 @@ class RotationBranch(nn.Module):
         self.num_classes = num_classes
         self.feature_dim = feature_dim
 
-        # TODO 9: ROI 框是原图坐标，feature1/feature2 分别是原图的 1/8 和 1/16。
-        self.roi1 = RoIPool(output_size=(roi_shape, roi_shape), spatial_scale=1.0 / 8.0)
-        self.roi2 = RoIPool(output_size=(roi_shape, roi_shape), spatial_scale=1.0 / 16.0)
+        #TODO 9: 完成 RoI 池化层的初始化
+        self.roi1 = RoIPool(  )
+        self.roi2 = RoIPool(  )
 
         # TODO 10: 完成全连接层 lin1 的初始化
-        self.lin1 = nn.Linear(feature_dim * roi_shape * roi_shape, hidden_dim)
+        self.lin1 = nn.Linear(  )
         nn.init.kaiming_normal_(self.lin1.weight)
         nn.init.zeros_(self.lin1.bias)
         self.relu_lin = nn.ReLU()
 
-        # TODO 11: 每个类别预测一个四元数，因此输出 4 * num_classes。
-        self.lin2 = nn.Linear(hidden_dim, 4 * num_classes)
+        # TODO 11: 完成全连接层 lin2 的初始化
+        self.lin2 = nn.Linear(  )  
         nn.init.kaiming_normal_(self.lin2.weight)
         nn.init.zeros_(self.lin2.bias)
         ######################################################################
@@ -311,14 +308,12 @@ class RotationBranch(nn.Module):
         ######################################################################
         # 在这里，你需要完成旋转分支的前向传播：
         # TODO 12: 完成 RoI 池化层的前向传播
-        out1 = self.roi1(feature1, bbx)
-        out2 = self.roi2(feature2, bbx)
+        out1 = self.roi1(    )
+        out2 = self.roi2(    )
         out = out1 + out2
 
         # TODO 13: 使用全连接层进行旋转角度的预测
-        out = torch.flatten(out, start_dim=1)
-        out = self.relu_lin(self.lin1(out))
-        quaternion = self.lin2(out)
+        quaternion = self.lin2(    )
 
 
         ######################################################################
@@ -352,10 +347,12 @@ class PoseCNN(nn.Module):
 
 
         # TODO 14: 在这里，你需要初始化每个分支
-        self.feature_extractor = FeatureExtraction(pretrained_backbone)
-        self.segmentation_branch = SegmentationBranch(num_classes=10)
-        self.RotationBranch = RotationBranch(num_classes=10)
-        self.TranslationBranch = TranslationBranch(num_classes=10)
+        vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+
+        self.feature_extractor =  #填充 FeatureExtraction 初始化
+        self.segmentation_branch =  #填充 SegmentationBranch 初始化
+        self.RotationBranch =  #填充 RotationBranch 初始化
+        self.TranslationBranch =  # 填充 TranslationBranch 初始化
 
 
         ######################################################################
@@ -413,31 +410,29 @@ class PoseCNN(nn.Module):
 
             #在这里你需要实现 PoseCNN 的训练过程：
             #TODO 15:使用特征提取器提取图像特征
-            feat1, feat2 = self.feature_extractor(input_dict)
+            feat1, feat2 = 
 
             #TODO 16:使用分割分支进行物体分割，并计算分割损失
-            probab, segmk, d_bbx = self.segmentation_branch(feat1, feat2)
-            loss_dict["loss_segmentation"] = loss_cross_entropy(probab, input_dict['label'])
+            probab, segmk, d_bbx =  # 填充分割分支的前向传播
+            loss_dict["loss_segmentation"] =  # 填充交叉熵损失计算
 
             trans = self.TranslationBranch(feat1, feat2)
             mae_loss = nn.L1Loss()
             loss_dict["loss_centermap"] = mae_loss(trans, input_dict['centermaps'])
 
-            gt_bbx = gt_bbx.to(device=feat1.device, dtype=torch.float32)
+            gt_bbx = gt_bbx.to(torch.cuda.FloatTensor())
 
-            # 只对与 GT 类别一致且 IoU 足够高的 ROI 计算旋转损失。
             filter_bbx_R = IOUselection(d_bbx, gt_bbx, self.iou_threshold)
 
             if filter_bbx_R.shape[0] != 0:
-                quater = self.RotationBranch(feat1, feat2, filter_bbx_R[:, :5])  # TODO: 填充旋转分支的前向传播
-                gt_R = self.gtRotation(filter_bbx_R, input_dict).to(feat1.device)  # 获取真实的旋转矩阵
+                quater = self.RotationBranch(feat1, feat2, gt_bbx[:, :5])  # TODO: 填充旋转分支的前向传播
+                gt_R = self.gtRotation(filter_bbx_R, input_dict)  # 获取真实的旋转矩阵
 
                 pred_R, label = self.estimateRotation(quater, filter_bbx_R)  # 估计旋转矩阵
-                pred_R = pred_R.to(feat1.device)
-                label = label.to(feat1.device).long()  # 转换标签为长整型
+                label = label.long()  # 转换标签为长整型
                 loss_dict["loss_R"] = loss_Rotation(pred_R, gt_R, label, self.models_pcd)  # 计算旋转损失
             else:
-                loss_dict["loss_R"] = torch.tensor(0.0, device=feat1.device)  # 如果没有选择到区域，旋转损失为 0
+                loss_dict["loss_R"] = 0  # 如果没有选择到区域，旋转损失为 0
 
 
 
@@ -463,38 +458,29 @@ class PoseCNN(nn.Module):
                 # 6) 最后使用 `generate_pose` 来生成最终的位姿。
 
                 # TODO 17: 填充特征提取过程，提取图像特征
-                feat1, feat2 = self.feature_extractor(input_dict)
+                feat1, feat2 = 
 
                 # TODO 18: 填充分割分支的前向传播，得到分割结果和边界框
-                probab, segmentation, bb_xs = self.segmentation_branch(feat1, feat2)
-                trans_i = self.TranslationBranch(feat1, feat2)
+                trans_i =
 
                 # TODO 19: 将边界框转换为正确的类型，以便后续计算
-                bb_xs = bb_xs.to(device=feat1.device, dtype=torch.float32)
+                bb_xs =
 
    
                 # TODO 20: 填充旋转分支的前向传播，得到旋转四元数             
-                if bb_xs.shape[0] == 0:
-                    output_dict = {}
-                else:
-                    quater = self.RotationBranch(feat1, feat2, bb_xs[:, :5])
+                quater =
 
-                    # TODO 21: 使用 `estimateRotation` 来估算物体的旋转矩阵         
-                    pred_R, _ = self.estimateRotation(quater, bb_xs)
+                # TODO 21: 使用 `estimateRotation` 来估算物体的旋转矩阵         
+                pred_R, _ = 
 
-                    # TODO 22: 使用 `HoughVoting` 预测物体中心点和深度
-                    # HoughVoting 根据分割图和 centermap 投票出物体中心与深度。
-                    pred_centers, pred_depths = HoughVoting(
-                        segmentation.cpu(),
-                        trans_i.cpu(),
-                        num_classes=self.segmentation_branch.num_classes
-                    )
+                # TODO 22: 使用 `HoughVoting` 预测物体中心点和深度
+                pred_centers, pred_depths =
 
 
-                    bb_xs = bb_xs.to(dtype=torch.long)
+                bb_xs = bb_xs.to(torch.cuda.LongTensor())
 
 
-                    output_dict = self.generate_pose(pred_R.cpu(), pred_centers, pred_depths, bb_xs.cpu())
+                output_dict = self.generate_pose(pred_R, pred_centers, pred_depths, bb_xs)
 
 
                 ######################################################################
@@ -555,9 +541,8 @@ class PoseCNN(nn.Module):
         quaternion_map: 一个张量，尺寸为 [batch_size, num_classes * 3, height, width]
         filter_bbx: 一个张量，尺寸为 N_filter_bbx * 6，包含 (batch_ids, x1, y1, x2, y2, cls)
         """
-        device = quaternion_map.device
         N_filter_bbx = filter_bbx.shape[0]
-        pred_Rs = torch.zeros(N_filter_bbx, 3, 3, device=device)
+        pred_Rs = torch.zeros(N_filter_bbx, 3, 3)
         label = []
         for idx, bbx in enumerate(filter_bbx):
             batch_id = int(bbx[0].item())
@@ -566,17 +551,16 @@ class PoseCNN(nn.Module):
             quaternion = nn.functional.normalize(quaternion, dim=0)
             pred_Rs[idx] = quaternion_to_matrix(quaternion)
             label.append(cls)
-        label = torch.tensor(label, device=device)
+        label = torch.tensor(label)
         return pred_Rs, label
 
     def gtRotation(self, filter_bbx, input_dict):
-        device = filter_bbx.device
         N_filter_bbx = filter_bbx.shape[0]
-        gt_Rs = torch.zeros(N_filter_bbx, 3, 3, device=device)
+        gt_Rs = torch.zeros(N_filter_bbx, 3, 3)
         for idx, bbx in enumerate(filter_bbx):
             batch_id = int(bbx[0].item())
             cls = int(bbx[5].item())
-            gt_Rs[idx] = input_dict['RTs'][batch_id][cls - 1][:3, :3].to(device)
+            gt_Rs[idx] = input_dict['RTs'][batch_id][cls - 1][:3, :3]
         return gt_Rs 
 
     def generate_pose(self, pred_Rs, pred_centers, pred_depths, bbxs):
